@@ -1,0 +1,7 @@
+
+# Terraform downloaded providers/cache
+.terraform/
+
+# Terraform state
+*.tfstate
+*.tfstate.*
