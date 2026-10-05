@@ -1,0 +1,11 @@
+flowchart TD
+    AG["Agent (persona via JWT)"] -->|x-persona header| GW["Envoy AI Gateway"]
+    GW --> RL{"rate-limit service"}
+    RL -->|RPM per persona exceeded| L429["429 Too Many Requests"]
+    RL -->|daily TOKEN budget via llmRequestCost| L429
+    RL -->|within limits| RT["retry + backoff on 429 / 503"]
+    RT --> CB["circuit breaker + outlier detection"]
+    CB -->|primary| BR1["Bedrock nova-pro"]
+    CB -. "primary fails then fallback" .-> BR2["Bedrock nova-lite"]
+    classDef gov fill:#fdf2e9,stroke:#c87f0a,color:#000;
+    class RL,RT,CB gov;

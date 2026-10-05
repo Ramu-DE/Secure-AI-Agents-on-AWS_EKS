@@ -1,0 +1,12 @@
+flowchart LR
+    U["👤 Persona"] -->|Bearer JWT| UI["Chat UI"]
+    UI --> ORCH["Orchestrator"]
+    ORCH -->|A2A + token| GW1["🚪 agentgateway<br/>authz: has(jwt.sub) — 401 if none"]
+    GW1 --> OA["Order Agent"]
+    OA -->|reads bearer from<br/>ServerCallContext, forwards| GW2["🚪 agentgateway<br/>MCP per-tool authz (700)"]
+    GW2 --> MCP["MCP Server"] --> DDB[("orders")]
+    classDef sec fill:#ffe8e8,stroke:#c0392b,color:#000;
+    class GW1,GW2 sec;
+    note["Identity propagates across EVERY hop:<br/>UI → orchestrator → specialist → MCP"]
+    class note note;
+    classDef note fill:#fffbe6,stroke:#b7950b,color:#000;

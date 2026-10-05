@@ -1,0 +1,50 @@
+# guardrails-proxy: OpenAI-compatible shim that applies a Bedrock Guardrail on
+# the model path (INPUT over user turn + tool results, OUTPUT over completion),
+# then forwards clean traffic to the Envoy AI Gateway.
+#
+# SA "guardrails-proxy" needs an EKS Pod Identity allowing bedrock:ApplyGuardrail
+# on the guardrail ARN (terraform/guardrails.tf). The guardrail id/version/region
+# come from the guardrail-config ConfigMap (policies/guardrail-config.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guardrails-proxy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: guardrails-proxy
+  template:
+    metadata:
+      labels:
+        app: guardrails-proxy
+    spec:
+      serviceAccountName: guardrails-proxy
+      containers:
+        - name: guardrails-proxy
+          image: ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/guardrails-proxy:v1
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: guardrail-config   # BEDROCK_GUARDRAIL_ID/_VERSION, AWS_REGION, UPSTREAM_BASE_URL
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: guardrails-proxy
+spec:
+  selector:
+    app: guardrails-proxy
+  ports:
+    - port: 8080
+      targetPort: 8080

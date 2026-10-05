@@ -1,0 +1,12 @@
+flowchart TD
+    U["👤 sales-analyst"] --> AG["Agent"]
+    AG -->|run_python + token| GW["🚪 agentgateway<br/>authz: run_python → sales-analyst only"]
+    GW --> BRK["code-executor MCP broker<br/>(holds scoped read-only DynamoDB creds)"]
+    BRK -->|scoped Query via period-index GSI| DDB[("DynamoDB orders")]
+    BRK -->|inject /app/orders.json + code<br/>OUT-OF-BAND, not via LLM| VM["🧪 Firecracker microVM<br/>(kata-fc, air-gapped)<br/>egress: [] · no creds"]
+    VM -->|pandas result + chart_id| BRK
+    BRK -->|capped stdout| AG --> U
+    classDef sandbox fill:#e8f8f5,stroke:#148f77,color:#000;
+    class VM,BRK sandbox;
+    classDef sec fill:#ffe8e8,stroke:#c0392b,color:#000;
+    class GW sec;

@@ -1,0 +1,60 @@
+# Per-persona rate limits + token budgets on the Envoy AI Gateway.
+#
+# Keying: the gateway derives an `x-persona` header from the Cognito JWT
+# (cognito:groups) — same identity module 700 authorizes on. Limits are applied
+# per distinct persona value, so sales-analyst and support-associate get
+# independent counters.
+#
+# NOTE: field names follow Envoy Gateway's BackendTrafficPolicy +
+# AIGatewayRoute. Pin to the versions installed by terraform/aigateway*.tf and
+# adjust apiVersion if the installed CRD differs (see README production deltas).
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: aigw-persona-ratelimit
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ai-gateway-route        # the OpenAI /v1 route to Bedrock
+  rateLimit:
+    type: Global
+    global:
+      rules:
+        # 1) Requests-per-minute ceiling per persona.
+        - clientSelectors:
+            - headers:
+                - name: x-persona
+                  type: Distinct
+          limit:
+            requests: 60
+            unit: Minute
+        # 2) Daily TOKEN budget per persona. Envoy AI Gateway's llmRequestCost
+        #    extracts token usage from the LLM response and charges it against
+        #    this limit, so the budget is denominated in tokens, not requests.
+        - clientSelectors:
+            - headers:
+                - name: x-persona
+                  type: Distinct
+          limit:
+            requests: 200000        # tokens/day (see cost field below)
+            unit: Day
+          cost:
+            response:
+              # bind the limit decrement to the response's total token usage
+              format: '{{.llmRequestCost.totalTokens}}'
+---
+# Declare the token-cost extraction on the AI gateway route so the rate-limit
+# service receives per-response token counts.
+apiVersion: aigateway.envoyproxy.io/v1alpha1
+kind: AIGatewayRoute
+metadata:
+  name: ai-gateway-route-costs
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ai-gateway-route
+  llmRequestCosts:
+    - metadataKey: totalTokens
+      type: TotalToken

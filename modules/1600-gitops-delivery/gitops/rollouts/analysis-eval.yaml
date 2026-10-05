@@ -1,0 +1,33 @@
+# AnalysisTemplate used by the customer-agent canary. It runs the module-1300
+# eval suite as a Job against the canary; the Job's exit code is the verdict.
+# exit 0 (all scenarios pass) -> canary promotes; non-zero (regression) ->
+# canary fails and Argo Rollouts auto-rolls-back to the stable ReplicaSet.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: agent-eval-gate
+spec:
+  metrics:
+    - name: eval-suite
+      # Run once; the eval Job either passes (exit 0) or fails the canary.
+      count: 1
+      failureLimit: 0
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: agent-eval
+                    image: ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/agent-eval:v1
+                    command: ["python", "runner.py", "scenarios.yaml"]
+                    env:
+                      # Target the canary Service so evals hit the new version.
+                      - name: AGENT_URL
+                        value: "http://customer-agent.default.svc.cluster.local:8080/chat"
+                      - name: JUDGE_MODEL_BASE_URL
+                        value: "http://ai-gateway.envoy-gateway-system.svc.cluster.local/v1"
+                      - name: JUDGE_MODEL_ID
+                        value: "nova-pro"

@@ -1,0 +1,23 @@
+# Module 1200 adds no new Deployment — memory.py is imported by the existing
+# customer-agent / orchestrator image. It only needs two things wired in:
+#
+#   1. SESSIONS_TABLE + SESSION_TTL_SECONDS in the shared agent-config ConfigMap
+#      (patched below). MILVUS_URI is already there from module 500.
+#   2. The agent's ServiceAccount Pod Identity must allow DynamoDB
+#      Get/Put/Query on the agent_sessions table (added in terraform/memory.tf,
+#      alongside the existing ORDERS_TABLE grant).
+#
+# Apply with:  kubectl apply -f k8s.yaml && kubectl rollout restart deploy/customer-agent
+#
+# This is a strategic-merge patch fragment for the existing ConfigMap; it adds
+# keys without removing the model/MCP ones already present.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-config
+data:
+  SESSIONS_TABLE: "agent_sessions"
+  SESSION_TTL_SECONDS: "86400"
+  SHORT_TERM_WINDOW: "20"
+  # MILVUS_URI already set by module 500; agent_memory collection is created by
+  # terraform/memory.tf (same Milvus instance as product_catalog).

@@ -1,0 +1,10 @@
+flowchart TD
+    U["🌍 Users"] --> R53["Route 53<br/>failover routing + health checks"]
+    R53 -->|PRIMARY healthy| P["🟢 us-east-1<br/>EKS + agents + gateways<br/>Bedrock us-east-1"]
+    R53 -. "primary health fails then promote" .-> S["🟡 us-west-2 warm standby<br/>EKS + agents + gateways<br/>Bedrock us-west-2"]
+    P <-->|DynamoDB GLOBAL TABLES<br/>orders · sessions · approvals<br/>bidirectional, LWW| S
+    P -. "in-region Bedrock down then cross-region failover" .-> S
+    classDef prim fill:#eafaf1,stroke:#1e8e5a,color:#000;
+    classDef stby fill:#fff4e0,stroke:#d08a1d,color:#000;
+    class P prim;
+    class S stby;

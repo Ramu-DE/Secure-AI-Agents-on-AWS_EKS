@@ -1,0 +1,10 @@
+flowchart LR
+    AG["Agent"] -->|OpenAI /v1| PX["🛡️ guardrails-proxy<br/>(OpenAI-compatible shim)"]
+    PX -->|ApplyGuardrail INPUT<br/>user turn + TOOL RESULTS| BG["Bedrock Guardrail<br/>prompt-attack · PII · denied topics"]
+    PX -->|forward clean traffic| GW["Envoy AI Gateway"] --> BR["Bedrock"]
+    BR --> PX
+    PX -->|ApplyGuardrail OUTPUT<br/>mask PII / block leaks| BG
+    PX --> AG
+    PX -. "blocked attempt" .-> LF["Langfuse"]
+    classDef sec fill:#ffe8e8,stroke:#c0392b,color:#000;
+    class PX,BG sec;

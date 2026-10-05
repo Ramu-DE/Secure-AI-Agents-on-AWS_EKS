@@ -1,0 +1,17 @@
+flowchart TD
+    H["👤 Human"] -->|file issue + label 'agent'| G["📦 Gitea in-cluster"]
+    G -->|webhook issues event, HMAC-verified| D["Coding Agent Dispatcher"]
+    D -->|mint per-run Gitea token| D
+    D -->|SandboxClaim| S["🧪 kata-fc coding microVM"]
+    D -->|write git-credentials + task.md OUT-OF-BAND| S
+    S -->|clone, egress-locked| G
+    S -->|claude -p model calls| AI["Envoy AI GW to Bedrock Claude"]
+    AI --> S
+    S -->|edit, test, commit, push branch, open PR| G
+    D -->|verify PR, comment link| G
+    D -->|terminate sandbox + revoke token| S
+    note["🔐 No human ever handles a git credential"]
+    class note note;
+    classDef note fill:#fffbe6,stroke:#b7950b,color:#000;
+    classDef sandbox fill:#e8f8f5,stroke:#148f77,color:#000;
+    class S sandbox;

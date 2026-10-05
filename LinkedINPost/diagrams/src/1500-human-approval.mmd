@@ -1,0 +1,15 @@
+flowchart TD
+    U["👤 Customer"] --> AG["Agent"]
+    AG -->|gated tool initiate_return: files request, does NOT execute| APS["Approval Service"]
+    APS -->|store PENDING| DDB[("DynamoDB<br/>agent_approvals · TTL")]
+    APS -->|returns 'ARQ-123 pending'| AG --> U
+    R["👤 Reviewer"] -->|GET /pending| APS
+    R -->|POST approve| APS
+    APS -->|EXECUTE with service creds, NOT the LLM| ACT["real side effect<br/>e.g. initiate_return"]
+    R -->|POST reject| APS
+    APS -. "nothing executes on reject" .-> X["∅"]
+    note["🔐 Agent can only PROPOSE · no self-approve path"]
+    class note note;
+    classDef note fill:#fffbe6,stroke:#b7950b,color:#000;
+    classDef sec fill:#ffe8e8,stroke:#c0392b,color:#000;
+    class APS sec;

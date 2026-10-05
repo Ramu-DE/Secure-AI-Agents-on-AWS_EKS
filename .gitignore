@@ -1,7 +1,13 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.fastembed_cache/
+*.log
 
-# Terraform downloaded providers/cache
+# Terraform local caches/state (never commit)
 .terraform/
-
-# Terraform state
 *.tfstate
 *.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+crash.log

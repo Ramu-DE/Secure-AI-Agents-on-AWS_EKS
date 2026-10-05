@@ -1,0 +1,10 @@
+flowchart LR
+    U["👤 Customer"] --> AG["Customer Agent<br/>build_session_agent<br/>(session_id, user_id)"]
+    AG -->|OpenAI /v1| GW["Envoy AI Gateway"]
+    GW --> BR["Amazon Bedrock"]
+    BR --> AG
+    AG --> U
+    AG -. "trace spans<br/>session.id / user.id" .-> LF["📊 Langfuse"]
+    LF -->|group by session<br/>filter by persona| DBG["🔍 Debug / audit"]
+    classDef obs fill:#eafaf1,stroke:#1e8e5a,color:#000;
+    class LF,DBG obs;

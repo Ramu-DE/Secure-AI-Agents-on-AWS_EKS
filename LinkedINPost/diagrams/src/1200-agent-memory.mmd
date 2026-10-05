@@ -1,0 +1,9 @@
+flowchart LR
+    U["👤 user_id / session_id"] --> AG["Agent"]
+    AG -->|load_session / save_turn| ST["🧠 Short-term<br/>DynamoDB agent_sessions<br/>last N turns · TTL 24h"]
+    AG -->|recall_memory / remember, user-scoped filter| LT["🧠 Long-term<br/>Milvus agent_memory<br/>semantic, per user_id"]
+    ST -->|survives restart / reconnect| AG
+    LT -->|facts across sessions| AG
+    AG --> U
+    classDef mem fill:#eef6ff,stroke:#2c6fbb,color:#000;
+    class ST,LT mem;

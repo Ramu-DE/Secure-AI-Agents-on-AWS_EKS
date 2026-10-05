@@ -1,0 +1,11 @@
+flowchart TD
+    U["👤 Customer"] --> ORCH["Orchestrator<br/>(routing agent — never answers directly)"]
+    ORCH -->|A2A: order query| OA["Order Agent<br/>(A2A specialist)"]
+    ORCH -->|A2A: product query| PA["Product Agent<br/>(A2A specialist)"]
+    OA -->|MCP| MCP["MCP Server"] --> DDB[("DynamoDB orders")]
+    PA -->|RAG| MIL["Milvus catalog"]
+    OA --> ORCH
+    PA --> ORCH
+    ORCH --> U
+    classDef spec fill:#f3e8ff,stroke:#7d3cc0,color:#000;
+    class OA,PA spec;

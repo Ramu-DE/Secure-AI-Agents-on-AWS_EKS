@@ -1,0 +1,16 @@
+# Wiring for the guardrails-proxy. Fill the id/version from Terraform outputs:
+#   BEDROCK_GUARDRAIL_ID      <- terraform output -raw bedrock_guardrail_id
+#   BEDROCK_GUARDRAIL_VERSION <- terraform output -raw bedrock_guardrail_version
+#
+# The guardrail itself (prompt-attack filter, PII masking, denied topics, word
+# filters) is defined in terraform/guardrails.tf — this ConfigMap only tells the
+# proxy which guardrail to apply and where the real gateway is.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guardrail-config
+data:
+  BEDROCK_GUARDRAIL_ID: "__GUARDRAIL_ID__"
+  BEDROCK_GUARDRAIL_VERSION: "__GUARDRAIL_VERSION__"
+  AWS_REGION: "__AWS_REGION__"
+  UPSTREAM_BASE_URL: "http://ai-gateway.envoy-gateway-system.svc.cluster.local/v1"
