@@ -20,7 +20,7 @@ code isolated in **kata-containers + Firecracker** microVMs, and traces in
 
 Each module builds on the previous one. Every module has an architecture/flow
 diagram and a step-by-step explanation in
-**[LinkedINPost/diagrams/MODULE-FLOWS.md](./LinkedINPost/diagrams/MODULE-FLOWS.md)**.
+**[docs/diagrams/MODULE-FLOWS.md](./docs/diagrams/MODULE-FLOWS.md)**.
 
 ### Core track (200 → 1000)
 
@@ -67,7 +67,7 @@ agentgateway ──(authz: per-persona, deny-by-default)──► MCP tools ─�
 ```
 
 Full per-module diagrams (PNG/SVG + Mermaid sources):
-[`LinkedINPost/diagrams/`](./LinkedINPost/diagrams).
+[`docs/diagrams/`](./docs/diagrams).
 
 ---
 
@@ -89,7 +89,7 @@ Full per-module diagrams (PNG/SVG + Mermaid sources):
 ```
 modules/      # the workshop labs (200–1700), each with README + code + k8s/policies
 terraform/    # platform: EKS, Karpenter, gateways, Cognito, DynamoDB, Bedrock, Gitea, Langfuse …
-LinkedINPost/ # architecture diagrams + per-module flow docs + summary writeup
+docs/ # architecture diagrams + per-module flow docs + summary writeup
 ```
 
 ## Getting started
