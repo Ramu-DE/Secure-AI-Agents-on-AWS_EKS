@@ -1,7 +1,7 @@
 # Module Architecture & Flow — Secure AI Agents on Amazon EKS
 
 Per-module architecture diagrams with a step-by-step flow explanation for each.
-Images live in [`diagrams/png/`](./png) (raster, for LinkedIn/slides) and
+Images live in [`diagrams/png/`](./png) (raster, for slides/social) and
 [`diagrams/svg/`](./svg) (vector, crisp at any zoom). Mermaid sources are in
 [`diagrams/src/`](./src) — edit those and re-render.
 
