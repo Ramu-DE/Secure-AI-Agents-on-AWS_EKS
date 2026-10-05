@@ -1,0 +1,81 @@
+# DR infrastructure (copy into terraform/ as dr.tf and adapt).
+#
+# Covers the three cloud-infra pieces of module 1700 that can't be in-cluster
+# manifests: DynamoDB global tables, Route 53 health-checked failover, and the
+# standby region's provider wiring. The standby EKS cluster itself reuses the
+# existing cluster module with the alternate provider — not repeated here.
+
+variable "primary_region"  { default = "us-east-1" }
+variable "standby_region"  { default = "us-west-2" }
+
+provider "aws" {
+  alias  = "standby"
+  region = var.standby_region
+}
+
+# ---------------------------------------------------------------------------
+# 1) State: make the stateful tables global (orders, sessions [1200],
+#    approvals [1500]). A replica in the standby region gives the warm standby
+#    live, bidirectionally-replicated data (last-writer-wins).
+#    NOTE: requires the tables to use billing_mode PAY_PER_REQUEST (or have
+#    auto-scaling) and have stream_enabled = true with NEW_AND_OLD_IMAGES.
+# ---------------------------------------------------------------------------
+locals {
+  global_tables = ["orders", "agent_sessions", "agent_approvals"]
+}
+
+resource "aws_dynamodb_table_replica" "standby" {
+  for_each    = toset(local.global_tables)
+  global_table_arn = "arn:aws:dynamodb:${var.primary_region}:${data.aws_caller_identity.current.account_id}:table/${each.value}"
+  provider    = aws.standby
+}
+
+data "aws_caller_identity" "current" {}
+
+# ---------------------------------------------------------------------------
+# 2) Traffic: Route 53 failover routing with per-region health checks on each
+#    region's gateway. Primary health failing promotes the standby.
+# ---------------------------------------------------------------------------
+resource "aws_route53_health_check" "primary" {
+  fqdn              = var.primary_gateway_fqdn
+  type              = "HTTPS"
+  resource_path     = "/healthz"
+  failure_threshold = 3
+  request_interval  = 10
+}
+
+resource "aws_route53_record" "primary" {
+  zone_id        = var.hosted_zone_id
+  name           = var.app_fqdn
+  type           = "A"
+  set_identifier = "primary"
+  failover_routing_policy { type = "PRIMARY" }
+  health_check_id = aws_route53_health_check.primary.id
+  alias {
+    name                   = var.primary_gateway_alias
+    zone_id                = var.primary_gateway_zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource "aws_route53_record" "standby" {
+  zone_id        = var.hosted_zone_id
+  name           = var.app_fqdn
+  type           = "A"
+  set_identifier = "standby"
+  failover_routing_policy { type = "SECONDARY" }
+  alias {
+    name                   = var.standby_gateway_alias
+    zone_id                = var.standby_gateway_zone_id
+    evaluate_target_health = true
+  }
+}
+
+# Inputs to fill from the primary/standby gateway outputs:
+variable "primary_gateway_fqdn"     {}
+variable "primary_gateway_alias"    {}
+variable "primary_gateway_zone_id"  {}
+variable "standby_gateway_alias"    {}
+variable "standby_gateway_zone_id"  {}
+variable "hosted_zone_id"           {}
+variable "app_fqdn"                 {}

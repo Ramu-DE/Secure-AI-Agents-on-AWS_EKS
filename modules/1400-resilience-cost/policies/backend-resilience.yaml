@@ -1,0 +1,73 @@
+# Resilience on the Bedrock backend: retries + backoff, request timeout,
+# circuit breaking, and outlier detection. Plus a fallback route so a throttled
+# or failing primary model degrades to a secondary instead of erroring the user.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: bedrock-resilience
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ai-gateway-route
+  # Retry transient model failures with exponential backoff (bounded).
+  retry:
+    numRetries: 2
+    perRetry:
+      backOff:
+        baseInterval: 200ms
+        maxInterval: 2s
+    retryOn:
+      httpStatusCodes: [429, 503]
+      triggers: ["connect-failure", "reset"]
+  # Shed load instead of collapsing when the backend saturates.
+  circuitBreaker:
+    maxConnections: 100
+    maxPendingRequests: 50
+    maxParallelRequests: 100
+  # Eject an endpoint that keeps returning 5xx from the load-balancing pool.
+  healthCheck:
+    passive:
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      consecutiveGatewayErrors: 5
+      interval: 10s
+---
+# Per-request deadline so a hung upstream can't pin a worker indefinitely.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ai-gateway-route
+spec:
+  parentRefs:
+    - name: ai-gateway
+      namespace: envoy-gateway-system
+  rules:
+    - timeouts:
+        request: "60s"
+        backendRequest: "55s"
+      backendRefs:
+        - name: bedrock-primary
+          group: gateway.envoyproxy.io
+          kind: Backend
+          port: 443
+          weight: 100
+---
+# Fallback: an AIGatewayRoute that tries the primary model, and on failure
+# routes to a cheaper secondary. (Shape depends on the installed Envoy AI
+# Gateway build; see README. Primary = Claude/Nova-pro, secondary = Nova-lite.)
+apiVersion: aigateway.envoyproxy.io/v1alpha1
+kind: AIGatewayRoute
+metadata:
+  name: ai-gateway-fallback
+spec:
+  rules:
+    - matches:
+        - headers:
+            - name: x-ai-eg-model
+              value: nova-pro
+      backendRefs:
+        - name: bedrock-nova-pro
+          priority: 0            # primary
+        - name: bedrock-nova-lite
+          priority: 1            # fallback on primary failure

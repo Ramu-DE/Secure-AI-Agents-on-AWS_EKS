@@ -1,0 +1,55 @@
+# approval-service: files/stores approval requests and EXECUTES high-impact
+# actions only after a human decision. The agent SA can reach POST /requests and
+# GET status, but approve/reject are reviewer-only (enforce via agentgateway or
+# an ingress authz in production — see README).
+#
+# SA "approval-service" needs an EKS Pod Identity for DynamoDB Get/Put/Scan on
+# the agent_approvals table (terraform/approvals.tf). It also holds the scoped
+# credentials used to actually execute an approved action (e.g. the orders
+# table) — deliberately NOT the agent's identity.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: approval-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: approval-service
+  template:
+    metadata:
+      labels:
+        app: approval-service
+    spec:
+      serviceAccountName: approval-service
+      containers:
+        - name: approval-service
+          image: ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/approval-service:v1
+          imagePullPolicy: Always
+          env:
+            - name: APPROVALS_TABLE
+              value: "agent_approvals"
+          envFrom:
+            - configMapRef:
+                name: agent-config   # AWS_REGION, ORDERS_TABLE for the executor
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: approval-service
+spec:
+  selector:
+    app: approval-service
+  ports:
+    - port: 8080
+      targetPort: 8080

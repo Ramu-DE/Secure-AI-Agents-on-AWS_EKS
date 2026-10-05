@@ -1,0 +1,10 @@
+flowchart LR
+    U["👤 Persona<br/>(Cognito login)"] -->|Bearer JWT| UI["Chat UI"]
+    UI -->|Authorization: Bearer| AG["Customer Agent"]
+    AG -->|MCP + token| GW["🚪 agentgateway"]
+    GW -->|1. jwtAuthentication<br/>validate JWT| JWKS["Cognito JWKS"]
+    GW -->|2. authz by cognito:groups<br/>per call_tool| MCP["MCP Server"]
+    MCP --> DDB[("orders")]
+    GW -. "unauthorized tool<br/>HIDDEN from tools/list" .-> AG
+    classDef sec fill:#ffe8e8,stroke:#c0392b,color:#000;
+    class GW,JWKS sec;

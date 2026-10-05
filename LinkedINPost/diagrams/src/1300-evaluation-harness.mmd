@@ -1,0 +1,12 @@
+flowchart TD
+    SC["📋 scenarios.yaml<br/>persona · query · expect_tools<br/>rubric · must_refuse"] --> R["runner.py"]
+    R -->|replay each scenario| AG["Deployed Agent"]
+    AG -->|answer + tools_used + latency| R
+    R -->|score answer| J["judge.py<br/>LLM-as-judge (stronger model)"]
+    J -->|correctness · no_hallucination<br/>refusal_correct| R
+    R -. "reads tool-selection + latency" .-> LF["Langfuse traces"]
+    R --> OUT{"all pass?"}
+    OUT -->|yes exit 0| PASS["✅ promote"]
+    OUT -->|no exit 1| FAIL["❌ regression → block release"]
+    classDef eval fill:#eafaf1,stroke:#1e8e5a,color:#000;
+    class R,J eval;

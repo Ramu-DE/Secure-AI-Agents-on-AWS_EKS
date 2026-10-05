@@ -1,0 +1,55 @@
+# Cross-region Bedrock failover at the Envoy AI Gateway.
+#
+# Each region's gateway prefers its in-region Bedrock (priority 0) and falls
+# back to the other region's Bedrock (priority 1) when the in-region endpoint is
+# unhealthy. This complements module 1400's in-region model fallback: 1400 swaps
+# MODELS within a region; this swaps REGIONS for the same model.
+#
+# Pin apiVersions to the installed Envoy AI Gateway / Envoy Gateway build.
+apiVersion: aigateway.envoyproxy.io/v1alpha1
+kind: AIServiceBackend
+metadata:
+  name: bedrock-us-east-1
+spec:
+  schema:
+    name: AWSBedrock
+  # region + model wired via the backendRef/securityPolicy created in Terraform.
+---
+apiVersion: aigateway.envoyproxy.io/v1alpha1
+kind: AIServiceBackend
+metadata:
+  name: bedrock-us-west-2
+spec:
+  schema:
+    name: AWSBedrock
+---
+# Route prefers in-region Bedrock, fails over cross-region on failure.
+apiVersion: aigateway.envoyproxy.io/v1alpha1
+kind: AIGatewayRoute
+metadata:
+  name: ai-gateway-route-dr
+spec:
+  rules:
+    - backendRefs:
+        - name: bedrock-us-east-1
+          priority: 0        # in-region primary
+        - name: bedrock-us-west-2
+          priority: 1        # cross-region failover
+---
+# Passive outlier detection so a degraded in-region endpoint is ejected quickly,
+# tripping the cross-region failover above.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: bedrock-dr-outlier
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ai-gateway-route-dr
+  healthCheck:
+    passive:
+      baseEjectionTime: 15s
+      maxEjectionPercent: 100
+      consecutiveGatewayErrors: 3
+      interval: 5s

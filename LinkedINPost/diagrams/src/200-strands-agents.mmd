@@ -1,0 +1,10 @@
+flowchart LR
+    U["👤 Customer"] --> AG["Customer Agent<br/>(Strands SDK)"]
+    AG -->|lookup_order| T["🧰 order tool<br/>(in-process)"]
+    AG -->|OpenAI /v1| GW["Envoy AI Gateway"]
+    GW --> BR["Amazon Bedrock<br/>(Nova / Claude)"]
+    T --> AG
+    BR --> AG
+    AG --> U
+    classDef model fill:#e8f0ff,stroke:#2c6fbb,color:#000;
+    class GW,BR model;

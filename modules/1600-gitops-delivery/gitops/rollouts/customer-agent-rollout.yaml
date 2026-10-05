@@ -1,0 +1,50 @@
+# Argo Rollout: the customer-agent ships as a canary gated by the eval harness.
+# 10% -> analysis (run module-1300 evals) -> 50% -> 100%, with auto-rollback if
+# the analysis fails. This replaces the plain Deployment in modules/500.../k8s.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: customer-agent
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: customer-agent
+  template:
+    metadata:
+      labels:
+        app: customer-agent
+    spec:
+      serviceAccountName: customer-agent
+      containers:
+        - name: customer-agent
+          # Bump this tag via PR to ship a new version — the canary runs automatically.
+          image: ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/customer-agent:v2
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: agent-config
+          ports:
+            - containerPort: 8080
+  strategy:
+    canary:
+      steps:
+        - setWeight: 10
+        - pause: {duration: 30s}
+        - analysis:
+            templates:
+              - templateName: agent-eval-gate
+        - setWeight: 50
+        - pause: {duration: 30s}
+        - setWeight: 100
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-agent
+spec:
+  selector:
+    app: customer-agent
+  ports:
+    - port: 8080
+      targetPort: 8080

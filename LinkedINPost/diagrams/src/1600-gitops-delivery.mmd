@@ -1,0 +1,10 @@
+flowchart TD
+    DEV["👩‍💻 commit to main<br/>(bump image tag)"] --> GIT["📦 Git repo (source of truth)"]
+    GIT -->|watch & reconcile| ACD["Argo CD<br/>App-of-Apps (prune + self-heal)"]
+    ACD --> RO["Argo Rollout (canary)"]
+    RO -->|setWeight 10%| C10["canary 10%"]
+    C10 --> AN["AnalysisTemplate<br/>run module-1300 eval Job"]
+    AN -->|exit 0 pass| C50["50% → 100% ✅"]
+    AN -->|exit 1 regression| RB["auto-rollback to stable ❌"]
+    classDef ops fill:#eef6ff,stroke:#2c6fbb,color:#000;
+    class ACD,RO,AN ops;

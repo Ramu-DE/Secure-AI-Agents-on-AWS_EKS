@@ -1,0 +1,21 @@
+# Child Application for the customer-agent. Argo CD syncs the agent's Rollout +
+# analysis manifests from Git. Add one of these per component (mcp-server,
+# guardrails-proxy [1100], approval-service [1500], ...).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: customer-agent
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://git.example.com/anycompany/agents-workshop.git
+    targetRevision: main
+    path: modules/1600-gitops-delivery/gitops/rollouts
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

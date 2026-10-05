@@ -1,0 +1,12 @@
+flowchart LR
+    U["👤 Customer"] --> AG["Customer Agent"]
+    AG -->|product RAG| MIL["Milvus<br/>product_catalog<br/>(fastembed MiniLM)"]
+    AG -->|MCP streamable-http| MCP["MCP Server<br/>lookup_order · check_inventory<br/>initiate_return"]
+    MCP --> DDB[("DynamoDB<br/>orders")]
+    AG -->|OpenAI /v1| GW["Envoy AI Gateway"] --> BR["Bedrock"]
+    MIL --> AG
+    MCP --> AG
+    BR --> AG
+    AG --> U
+    classDef data fill:#fdf2e9,stroke:#c87f0a,color:#000;
+    class MIL,MCP,DDB data;
